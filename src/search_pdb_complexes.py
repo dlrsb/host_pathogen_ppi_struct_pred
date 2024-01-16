@@ -35,12 +35,13 @@ def flatten_json(y, exclude=[]):
                             out[name + a + '.uniprot_id'] = ';'.join(
                                 [uniprot['rcsb_uniprot_container_identifiers']['uniprot_id'] for uniprot in x[a]])
                             out[name + a + '.uniprot_source_organism_taxonomy_id'] = ';'.join(
-                                [str(uniprot['rcsb_uniprot_protein']['source_organism']['taxonomy_id']) for uniprot in
+                                [str(uniprot['rcsb_uniprot_protein']['source_organism'][
+                                         'taxonomy_id']) if 'rcsb_uniprot_protein' in uniprot else '' for uniprot in
                                  x[a]])
                             out[name + a + '.uniprot_source_organism_scientific_name'] = ';'.join(
-                                [str(uniprot['rcsb_uniprot_protein']['source_organism']['scientific_name']) for uniprot
-                                 in
-                                 x[a]])
+                                [str(uniprot['rcsb_uniprot_protein']['source_organism'][
+                                         'scientific_name']) if 'rcsb_uniprot_protein' in uniprot else '' for
+                                 uniprot in x[a]])
                     elif a == 'rcsb_polymer_name_combined':
                         if x[a] is None:
                             out[name + a] = np.nan
@@ -169,6 +170,83 @@ def create_search_api_query_assemblies(organism1, organism2, multimer_type, reso
     }
 
     return query
+
+
+def create_graphql_query_assemblies(assembly_ids):
+    format_ids = '[' + ', '.join(['"' + i + '"' for i in assembly_ids]) + ']'
+    graphql_query = """{
+    assemblies(assembly_ids:""" + format_ids + """){
+    rcsb_id
+    entry{
+      struct {
+        title
+      }
+      rcsb_accession_info{
+        initial_release_date
+      }
+      rcsb_entry_info {
+        resolution_combined
+        experimental_method
+      }
+    }
+    rcsb_struct_symmetry{
+    oligomeric_state
+    }
+    pdbx_struct_assembly
+    {
+    oligomeric_details
+    rcsb_details
+    }
+    rcsb_assembly_info{
+    polymer_entity_count_protein
+    polymer_entity_instance_count_protein
+    total_number_interface_residues
+    num_protein_interface_entities
+    num_heteromeric_interface_entities
+    modeled_polymer_monomer_count
+    }
+    polymer_entity_instances{
+      polymer_entity{
+        rcsb_polymer_entity{
+          pdbx_description
+          pdbx_mutation
+          rcsb_polymer_name_combined{
+            names
+          }
+        }
+        uniprots{
+          rcsb_uniprot_container_identifiers{
+            uniprot_id
+          }
+          rcsb_uniprot_protein{
+            source_organism{
+              taxonomy_id
+              scientific_name
+            }
+          }
+        }
+        rcsb_entity_source_organism{
+          ncbi_taxonomy_id
+          ncbi_scientific_name
+        }
+        entity_poly{
+          rcsb_mutation_count
+          rcsb_insertion_count
+          rcsb_deletion_count
+          rcsb_conflict_count
+          rcsb_artifact_monomer_count
+          rcsb_sample_sequence_length
+        }
+        rcsb_cluster_membership{
+          cluster_id
+          identity
+        }
+      }
+    }
+    }
+    }"""
+
+    return graphql_query
 
 
 def create_graphql_query_assemblies(assembly_ids):
@@ -703,11 +781,10 @@ def save_results(df, output_dir, prefix=''):
     with open(os.path.join(output_dir, '{}selected_assembly_ids.txt'.format(prefix)), 'w') as f:
         f.write(','.join(df['assembly_id'].unique().tolist()))
 
-
-if __name__ == '__main__':
-    get_pdb_ids(host='Mammalia', pathogen='Viruses', multimer_type='dimer',
-                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
-                output_dir='../data/virus_mammalia_dimers')
-    # get_pdb_ids(host='Mammalia', pathogen='Bacteria', multimer_type='dimer',
-    #                                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
-    #                                output_dir='../data/bacteria_mammalia_dimers')
+# if __name__ == '__main__':
+#     get_pdb_ids(host='Mammalia', pathogen='Viruses', multimer_type='dimer',
+#                 resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
+#                 output_dir='../data/virus_mammalia_dimers')
+#     # get_pdb_ids(host='Mammalia', pathogen='Bacteria', multimer_type='dimer',
+#     #                                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
+#     #                                output_dir='../data/bacteria_mammalia_dimers')
