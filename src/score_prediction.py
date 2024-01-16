@@ -3,7 +3,7 @@ import glob
 import json
 import argparse
 import pandas as pd
-from rename_protein_chains import rename_protein_chains
+from rename_protein_chains import rename_protein_chains2
 from msa_seqs import get_num_msa_hits
 from scoring_metrics import *
 
@@ -23,8 +23,8 @@ def add_prefix(results_dict, prefix):
     return {prefix + k: v for k, v in results_dict.items()}
 
 
-def score_structure(predictions_dir, native_structure_filepath=None, rename_chains=False, only_best_model=False,
-                    interface_cutoff=5, output_filepath=None):
+def score_structure(predictions_dir, native_structure_filepath=None, input_fasta_filepath=None, rename_chains=False,
+                    only_best_model=False, interface_cutoff=10, output_filepath=None):
     results = {'name': os.path.normpath(predictions_dir).split(os.sep)[-1]}
 
     # get all models in predictions_dir or only the best model
@@ -42,20 +42,20 @@ def score_structure(predictions_dir, native_structure_filepath=None, rename_chai
     if only_best_model:
         models_to_score.append('{}_{}.pdb'.format(pdbs_to_use, ranking_debug['order'][0]))
     else:
-        pdb_paths = glob.glob(os.path.join(predictions_dir, pdbs_to_use+'_model_*[1-5]_multimer_v3_pred_*[0-5].pdb'))
+        pdb_paths = glob.glob(os.path.join(predictions_dir, pdbs_to_use + '_model_*[1-5]_multimer_v3_pred_*[0-5].pdb'))
 
         models_to_score.extend([os.path.split(pth)[-1] for pth in pdb_paths])
 
     for model in models_to_score:
         if not only_best_model:
             split_name = model.split('_')
-            prefix = '{}_'.format('_'.join(split_name[1:3]+[split_name[5]]+[split_name[6].split('.')[0]]))
+            prefix = '{}_'.format('_'.join(split_name[1:3] + [split_name[5]] + [split_name[6].split('.')[0]]))
         else:
             prefix = ''
 
         # rename_chains
         if rename_chains:
-            rename_protein_chains(os.path.join(predictions_dir, model))
+            rename_protein_chains2(os.path.join(predictions_dir, model), input_fasta_filepath)
             model_filepath = os.path.join(predictions_dir, '{}_chains_renamed.pdb'.format(model.split('.')[0]))
         else:
             model_filepath = os.path.join(predictions_dir, model)
@@ -73,9 +73,9 @@ def score_structure(predictions_dir, native_structure_filepath=None, rename_chai
         # calculate pDockQ as defined in the Folddock paper, with the original 8A cutoff value:
         pdockq_folddock_results_8A = pdockq_folddock_score(model_filepath, cutoff=8)
         results.update(add_prefix(pdockq_folddock_results_8A, prefix))
-        # calculate pDockQ as defined in the Folddock paper, with the user-defined cutoff value:
-        pdockq_folddock_results = pdockq_folddock_score(model_filepath, cutoff=interface_cutoff)
-        results.update(add_prefix(pdockq_folddock_results, prefix))
+        # # calculate pDockQ as defined in the Folddock paper, with the user-defined cutoff value:
+        # pdockq_folddock_results = pdockq_folddock_score(model_filepath, cutoff=interface_cutoff)
+        # results.update(add_prefix(pdockq_folddock_results, prefix))
 
         # calculate pDockQ as defined in the "Towards a structurally resolved human protein interaction network" paper,
         # with the original 10 A cutoff value:
@@ -89,15 +89,15 @@ def score_structure(predictions_dir, native_structure_filepath=None, rename_chai
 
         # calculate pDockQ2 as defined in "Evaluation of AlphaFold-Multimer prediction on multi-chain protein complexes"
         pdockq2_results_8 = pdockq2_score(predicted_structure_filepath=model_filepath,
-                                        results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
-                                        cutoff=8)
+                                          results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
+                                          cutoff=8)
         results.update(add_prefix(pdockq2_results_8, prefix))
 
-        # calculate pDockQ2 using a user-defined cutoff value
-        pdockq2_results = pdockq2_score(predicted_structure_filepath=model_filepath,
-                                          results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
-                                          cutoff=interface_cutoff)
-        results.update(add_prefix(pdockq2_results, prefix))
+        # # calculate pDockQ2 using a user-defined cutoff value
+        # pdockq2_results = pdockq2_score(predicted_structure_filepath=model_filepath,
+        #                                 results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
+        #                                 cutoff=interface_cutoff)
+        # results.update(add_prefix(pdockq2_results, prefix))
 
         if native_structure_filepath is not None:
             tmscore_results = tm_score(native_structure_filepath, model_filepath)
@@ -130,6 +130,12 @@ if __name__ == '__main__':
         help='Path to the PDB file containing the native (experimentally-determined) structure',
     )
     arg_parser.add_argument(
+        '-f',
+        dest='input_fasta_filepath',
+        default=None,
+        help='Path to the input FASTA file (used when --rename-chains is true',
+    )
+    arg_parser.add_argument(
         '-o',
         dest='output_filepath',
         default=None,
@@ -138,7 +144,7 @@ if __name__ == '__main__':
     arg_parser.add_argument(
         '--interface-cutoff',
         dest='interface_cutoff',
-        default=5,
+        default=10,
         type=int,
         help='Distance cutoff value to define the interface',
     )
