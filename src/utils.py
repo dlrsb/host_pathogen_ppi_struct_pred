@@ -51,20 +51,3 @@ def reduce_results_file(results_pkl_filepath):
     with open(new_pth, 'wb') as f:
         pickle.dump(selected_scores, f)
     os.remove(results_pkl_filepath)
-
-
-# alns = align_seqs('C:\\Users\\dlrba\\Dropbox\\igc_postdoc\\projects\\virus_host_ppi_structure_prediction\\test_alphafold_on_euler\\data\\2ajf.pdb1\\2ajf_modified.pdb1',
-#            'C:\\Users\\dlrba\\Dropbox\\igc_postdoc\\projects\\virus_host_ppi_structure_prediction\\test_alphafold_on_euler\\results\\alphafold231\\2AJF\\ranked_0.pdb')
-# print(alns)
-
-# alns = align_seqs('C:\\Users\\dlrba\\Dropbox\\igc_postdoc\\projects\\virus_host_ppi_structure_prediction\\test_alphafold_on_euler\\data\\6bi8.pdb1\\6bi8_modified.pdb1',
-#            'C:\\Users\\dlrba\\Dropbox\\igc_postdoc\\projects\\virus_host_ppi_structure_prediction\\test_alphafold_on_euler\\results\\alphafold231\\6BI8\\ranked_0.pdb')
-# ground_truth_seq_aligned, predicted_seq_aligned, _, _, _ = alns['B']
-# mask = [True if aa != '-' else False for aa in ground_truth_seq_aligned]
-# print(alns)
-# print(mask)
-
-# struct = load_structure('C:\\Users\\dlrba\\Dropbox\\igc_postdoc\\projects\\virus_host_ppi_structure_prediction\\test_alphafold_on_euler\\data\\6bi8.pdb1\\6bi8_modified.pdb1')
-# print(struct['A'])
-# for chain in struct.get_chains():
-#     print(chain.id)
