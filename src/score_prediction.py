@@ -5,6 +5,7 @@ import argparse
 import pandas as pd
 from rename_protein_chains import rename_protein_chains2
 from msa_seqs import get_num_msa_hits
+from select_subsequence_pdb import select_residues_pdb
 from scoring_metrics import *
 
 
@@ -24,7 +25,8 @@ def add_prefix(results_dict, prefix):
 
 
 def score_structure(predictions_dir, native_structure_filepath=None, input_fasta_filepath=None, rename_chains=False,
-                    only_best_model=False, interface_cutoff=10, output_filepath=None):
+                    only_best_model=False, select_residues_before_dockq=False, interface_cutoff=10,
+                    output_filepath=None):
     results = {'name': os.path.normpath(predictions_dir).split(os.sep)[-1]}
 
     # get all models in predictions_dir or only the best model
@@ -34,10 +36,11 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
         ranking_debug = json.load(f)
         results['ranked0_model'] = ranking_debug['order'][0]
 
-    if os.path.exists(os.path.join(predictions_dir, 'relaxed_{}.pdb'.format(ranking_debug['order'][0]))):
-        pdbs_to_use = 'relaxed'
-    else:
-        pdbs_to_use = 'unrelaxed'
+    # if os.path.exists(os.path.join(predictions_dir, 'relaxed_{}.pdb'.format(ranking_debug['order'][0]))):
+    #     pdbs_to_use = 'relaxed'
+    # else:
+    #     pdbs_to_use = 'unrelaxed'
+    pdbs_to_use = 'unrelaxed'
 
     if only_best_model:
         models_to_score.append('{}_{}.pdb'.format(pdbs_to_use, ranking_debug['order'][0]))
@@ -100,9 +103,20 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
         # results.update(add_prefix(pdockq2_results, prefix))
 
         if native_structure_filepath is not None:
-            tmscore_results = tm_score(native_structure_filepath, model_filepath)
+
+            tmscore_results = tm_score(native_structure_filepath=native_structure_filepath,
+                                       predicted_structure_filepath=model_filepath)
             results.update(add_prefix(tmscore_results, prefix))
-            dockq_results = dockq_score(native_structure_filepath, model_filepath)
+            if select_residues_before_dockq:
+                select_residues_pdb(model_pdb_filepath=model_filepath,
+                                    model_input_fasta=input_fasta_filepath,
+                                    native_pdb_filepath=native_structure_filepath)
+                new_model_filepath = '{}_selected.pdb'.format(os.path.splitext(model_filepath)[0])
+                dockq_results = dockq_score(native_structure_filepath=native_structure_filepath,
+                                            predicted_structure_filepath=new_model_filepath)
+            else:
+                dockq_results = dockq_score(native_structure_filepath=native_structure_filepath,
+                                            predicted_structure_filepath=model_filepath)
             results.update(add_prefix(dockq_results, prefix))
 
         # calculate interface size for each structure
@@ -133,7 +147,7 @@ if __name__ == '__main__':
         '-f',
         dest='input_fasta_filepath',
         default=None,
-        help='Path to the input FASTA file (used when --rename-chains is true',
+        help='Path to the input FASTA file (used when --rename-chains is true)',
     )
     arg_parser.add_argument(
         '-o',
@@ -159,6 +173,12 @@ if __name__ == '__main__':
         dest='only_best_model',
         action='store_true',
         help='Only calculate results for the highest ranked model',
+    )
+    arg_parser.add_argument(
+        '--select-residues-before-dockq',
+        dest='select_residues_before_dockq',
+        action='store_true',
+        help='Only calculate DockQ based on the residues that also exist in the native file',
     )
     args = arg_parser.parse_args()
     score_structure(**vars(args))
