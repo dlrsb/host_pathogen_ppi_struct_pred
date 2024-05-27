@@ -5,7 +5,6 @@ import argparse
 import pandas as pd
 from rename_protein_chains import rename_protein_chains2
 from msa_seqs import get_num_msa_hits
-from select_subsequence_pdb import select_residues_pdb
 from scoring_metrics import *
 
 
@@ -103,20 +102,15 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
         # results.update(add_prefix(pdockq2_results, prefix))
 
         if native_structure_filepath is not None:
-
+            # MM-align TM-score
             tmscore_results = tm_score(native_structure_filepath=native_structure_filepath,
                                        predicted_structure_filepath=model_filepath)
             results.update(add_prefix(tmscore_results, prefix))
-            if select_residues_before_dockq:
-                select_residues_pdb(model_pdb_filepath=model_filepath,
-                                    model_input_fasta=input_fasta_filepath,
-                                    native_pdb_filepath=native_structure_filepath)
-                new_model_filepath = '{}_selected.pdb'.format(os.path.splitext(model_filepath)[0])
-                dockq_results = dockq_score(native_structure_filepath=native_structure_filepath,
-                                            predicted_structure_filepath=new_model_filepath)
-            else:
-                dockq_results = dockq_score(native_structure_filepath=native_structure_filepath,
-                                            predicted_structure_filepath=model_filepath)
+            # DockQ
+            dockq_results = dockq_score(native_structure_filepath=native_structure_filepath,
+                                        predicted_structure_filepath=model_filepath,
+                                        fasta_filepath=input_fasta_filepath,
+                                        select_residues=select_residues_before_dockq)
             results.update(add_prefix(dockq_results, prefix))
 
         # calculate interface size for each structure

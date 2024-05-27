@@ -4,25 +4,26 @@ import argparse
 from score_prediction import score_structure
 
 
-def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepath, rename_chains, only_best_model=False,
-              interface_cutoff=10):
+def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepath, rename_chains,
+              only_best_model=False, select_residues_before_dockq=False, interface_cutoff=10):
     prediction_dirs = [pred_dir for pred_dir in os.listdir(results_dir) if os.path.isdir(os.path.join(results_dir, pred_dir))]
-    print(prediction_dirs)
     for pred_dir in prediction_dirs:
-        fasta_path = os.path.join(fasta_files_dir, '{}.fasta'.format(pred_dir))
+        if fasta_files_dir is not None:
+            fasta_path = os.path.join(fasta_files_dir, '{}.fasta'.format(pred_dir))
+        else:
+            fasta_path = None
         if os.path.exists(os.path.join(results_dir, pred_dir, '{}.done'.format(pred_dir))):
-            print(pred_dir)
-            print(fasta_path)
+            pred_dir_path = os.path.join(results_dir, pred_dir, pred_dir)
 
-            if os.path.exists(os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))):
-                native_path = os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))
-                if os.path.exists(os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))):
-                    pred_dir_path = os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))
+            if native_structures_dir is not None:
+                if os.path.exists(os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))):
+                    native_path = os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))
+                    if os.path.exists(os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))):
+                        pred_dir_path = os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))
                 else:
-                    pred_dir_path = os.path.join(results_dir, pred_dir, pred_dir)
+                    native_path = os.path.join(native_structures_dir, '{}.pdb'.format(pred_dir))
             else:
-                native_path = os.path.join(native_structures_dir, '{}.pdb'.format(pred_dir))
-                pred_dir_path = os.path.join(results_dir, pred_dir, pred_dir)
+                native_path = None
 
             try:
                 print('trying ' + pred_dir)
@@ -31,6 +32,7 @@ def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepa
                                 input_fasta_filepath=fasta_path,
                                 rename_chains=rename_chains,
                                 only_best_model=only_best_model,
+                                select_residues_before_dockq=select_residues_before_dockq,
                                 interface_cutoff=interface_cutoff,
                                 output_filepath=output_filepath)
             except Exception as e:
@@ -78,6 +80,12 @@ if __name__ == '__main__':
         dest='only_best_model',
         action='store_true',
         help='Only calculate results for the highest ranked model',
+    )
+    arg_parser.add_argument(
+        '--select-residues-before-dockq',
+        dest='select_residues_before_dockq',
+        action='store_true',
+        help='Only calculate DockQ based on the residues that also exist in the native file',
     )
     args = arg_parser.parse_args()
     score_all(**vars(args))

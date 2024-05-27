@@ -211,33 +211,17 @@ def tm_score(native_structure_filepath, predicted_structure_filepath):
     return results
 
 
-def dockq_score(native_structure_filepath, predicted_structure_filepath):
+def dockq_score(native_structure_filepath, predicted_structure_filepath, fasta_filepath, select_residues=False):
     predicted_structure = load_structure(predicted_structure_filepath)
     chains = [chain.id for chain in predicted_structure]
+    print(chains)
     native_structure = load_structure(native_structure_filepath)
     native_chains_in_predicted_struct = [chain.id for chain in native_structure if chain.id in chains]
-    # if chains != native_chains_in_predicted_struct: # chains have different order in the native_structure file
-    #     # sort the native_structure_file so that DockQ doesn't warn about a chain mismatch
-    #     try:
-    #         split_filepath ='{}_1{}'.format(os.path.splitext(native_structure_filepath)[0],
-    #                                         os.path.splitext(native_structure_filepath)[1])
-    #         sorted_filepath = '{}_sorted{}'.format(os.path.splitext(native_structure_filepath)[0],
-    #                                         os.path.splitext(native_structure_filepath)[1])
-    #         wdir = os.path.split(native_structure_filepath)[0]
-    #         print(wdir)
-    #         # TODO: create a small bash script to run this
-    #         subprocess.run(
-    #         ['conda', 'activate', 'vh_struct_pred', '&&', 'cd', wdir, '&&', 'pdb_splitmodel', '-C',
-    #          native_structure_filepath,
-    #          '&&', 'pdb_sort', split_filepath, '>',
-    #          sorted_filepath, '&&', 'rm', split_filepath], shell=True, check=True)
-    #         native_structure_filepath = sorted_filepath
-    #     except subprocess.CalledProcessError as err:
-    #         print(err)
+    print(native_chains_in_predicted_struct)
 
     if len(chains) == 2:
         command = ['/cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/scripts/run_dockq.sh', '-m',
-                   predicted_structure_filepath, '-n', native_structure_filepath, '--native_chain1', chains[0],
+                   predicted_structure_filepath, '-f', fasta_filepath, '-n', native_structure_filepath, '--native_chain1', chains[0],
                    '--model_chain1', chains[0], '--native_chain2', chains[1], '--model_chain2', chains[1]]
     else:
         # TODO: need to add the commands for protein complexes with more than 2 chains (calculate DockQ for all pairs
@@ -245,7 +229,10 @@ def dockq_score(native_structure_filepath, predicted_structure_filepath):
         pass
 
     if chains != native_chains_in_predicted_struct:
-        command += ['--sort_native']
+        command += ['--sort_chains']
+
+    if select_residues:
+        command += ['--select_residues']
 
     try:
         called_process = subprocess.run(command, check=True, capture_output=True, text=True)
