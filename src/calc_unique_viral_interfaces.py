@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def calc_jaccard(residues1, residues2):
+def calc_jaccard_dissimilarity(residues1, residues2):
     return 1 - len(set(residues1).intersection(set(residues2))) / len(set(residues1).union(set(residues2)))
 
 
@@ -61,7 +61,7 @@ def calc_unique_viral_interfaces():
                 jaccard_results['pair2'].append(pair2)
                 res1 = ast.literal_eval(df_pathogen.loc[df_pathogen['name']==pair1, 'huintaf2_interface_residues_chain1_8Acutoff'].item())
                 res2 = ast.literal_eval(df_pathogen.loc[df_pathogen['name']==pair2, 'huintaf2_interface_residues_chain1_8Acutoff'].item())
-                jaccard = calc_jaccard(res1, res2)
+                jaccard = calc_jaccard_dissimilarity(res1, res2)
                 jaccard_results['jaccard'].append(jaccard)
             jaccard_results_df = pd.DataFrame(data=jaccard_results)
             jaccard_results_df.to_csv(f"C:\\Users\\dlrba\\Desktop\\jaccard_viral_interfaces\\{pathogen_prot}_jaccard.csv", index=False)

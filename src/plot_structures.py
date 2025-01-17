@@ -1,8 +1,9 @@
-import os.path
+import os
 
 from pymol import cmd as pymol_cmd
 from pymol import util
 from pathlib import Path
+
 
 
 def plot_structure(pdb_path: Path, out_path: Path) -> None:
@@ -111,3 +112,18 @@ def plot_from_session_highlight_interface(pymol_session_filepath, output_filepat
     #pymol_cmd.zoom(complete=1)
     pymol_cmd.ray(width=2400, height=2400)
     pymol_cmd.png(output_filepath, dpi=300)
+
+
+if __name__ == '__main__':
+    # plot_from_session("/cluster/project/beltrao/dbaptista/full_Chlamydia-CT006_Q07955_baitP61981.pse",
+    #                   "/cluster/project/beltrao/dbaptista/full_Chlamydia-CT006_Q07955_baitP61981.png",
+    #                   orient_structures=False)
+    # plot_from_session("/cluster/project/beltrao/dbaptista/full_HPV-31-L1_Q53H80_baitO00505.pse",
+    #                   "/cluster/project/beltrao/dbaptista/full_HPV-31-L1_Q53H80_baitO00505.png",
+    #                   orient_structures=False)
+    # plot_from_session("/cluster/project/beltrao/dbaptista/full_MERS-orf4b_Q09161_baitP52292.pse",
+    #                   "/cluster/project/beltrao/dbaptista/full_MERS-orf4b_Q09161_baitP52292.png",
+    #                   orient_structures=False)
+    plot_from_session("/cluster/project/beltrao/dbaptista/full_HPV-31-L1_P61978_baitO00629.pse",
+                      "/cluster/project/beltrao/dbaptista/full_HPV-31-L1_P61978_baitO00629.png",
+                      orient_structures=False)

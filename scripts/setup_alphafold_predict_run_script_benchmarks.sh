@@ -390,7 +390,7 @@ python /cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/src/scor
 #fi
 
 # Reduce the size of the results pickle files
-python /cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/src/reduce_disk_usage.py --reduce-results \$OUTPUT_DIR/$PROTEIN
+python /cluster/project/beltrao/dbaptista/af_multimer_workflow/src/reduce_disk_usage.py --reduce-results \$OUTPUT_DIR/$PROTEIN
 
 
 rsync -av $RSYNC_OPTIONS \$TMPDIR/output/$PROTEIN $WORKDIR

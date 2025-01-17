@@ -4,7 +4,7 @@ import pickle
 from collections import defaultdict
 import numpy as np
 from Bio.PDB import Superimposer, CEAligner, PDBParser, PDBIO
-from pymol import cmd
+#from pymol import cmd
 from pdockq_folddock import read_pdb, calc_pdockq
 from pdockq_ifresid_huintaf2 import pDockQ, sigmoid
 from pdockq2 import retrieve_IFplddt, retrieve_IFPAEinter, calc_pmidockq
@@ -94,31 +94,31 @@ def pdockq2_score(predicted_structure_filepath, results_pickle_filepath, cutoff=
     return res_dict_new
 
 
-def rmsd_score_pymol(native_structure_filepath, predicted_structure_filepath, method_name='align',
-                     outlier_rejection_cycles=5, atom_subset='all'):
-    # TODO: figure out why super is not giving the same values as the PyMol GUI
-    # https://bioinformatics.stackexchange.com/questions/19608/pymol-alignment-script
-    # outlier_rejection_cycles=0 for all-atom RMSD
-    methods_map = {'align': cmd.align,
-                   'super': cmd.super,
-                   'cealign': cmd.cealign}
-
-    cmd.load(native_structure_filepath, 'experimental')
-    cmd.load(predicted_structure_filepath, 'predicted')
-    method = methods_map[method_name]  # TODO add a try except statement
-
-    if method_name == 'align' or method_name == 'super':
-        if atom_subset == 'CA':
-            rmsd = method('predicted////CA', 'experimental////CA', cycles=outlier_rejection_cycles)[0]
-        elif atom_subset == 'backbone':
-            rmsd = method('predicted & backbone', 'experimental & backbone', cycles=outlier_rejection_cycles)[0]
-        elif atom_subset == 'all':
-            rmsd = method('predicted', 'experimental', cycles=outlier_rejection_cycles)[0]
-        else:
-            raise ValueError("Unknown atom_subset. Please choose one of 'CA', 'backbone', or 'all'")
-    else:
-        rmsd = method('experimental', 'predicted')['RMSD']
-    return rmsd
+# def rmsd_score_pymol(native_structure_filepath, predicted_structure_filepath, method_name='align',
+#                      outlier_rejection_cycles=5, atom_subset='all'):
+#     # TODO: figure out why super is not giving the same values as the PyMol GUI
+#     # https://bioinformatics.stackexchange.com/questions/19608/pymol-alignment-script
+#     # outlier_rejection_cycles=0 for all-atom RMSD
+#     methods_map = {'align': cmd.align,
+#                    'super': cmd.super,
+#                    'cealign': cmd.cealign}
+#
+#     cmd.load(native_structure_filepath, 'experimental')
+#     cmd.load(predicted_structure_filepath, 'predicted')
+#     method = methods_map[method_name]  # TODO add a try except statement
+#
+#     if method_name == 'align' or method_name == 'super':
+#         if atom_subset == 'CA':
+#             rmsd = method('predicted////CA', 'experimental////CA', cycles=outlier_rejection_cycles)[0]
+#         elif atom_subset == 'backbone':
+#             rmsd = method('predicted & backbone', 'experimental & backbone', cycles=outlier_rejection_cycles)[0]
+#         elif atom_subset == 'all':
+#             rmsd = method('predicted', 'experimental', cycles=outlier_rejection_cycles)[0]
+#         else:
+#             raise ValueError("Unknown atom_subset. Please choose one of 'CA', 'backbone', or 'all'")
+#     else:
+#         rmsd = method('experimental', 'predicted')['RMSD']
+#     return rmsd
 
 
 def rmsd_score_biopython_superimposer(native_structure_filepath, predicted_structure_filepath, atom_subset='all'):

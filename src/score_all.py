@@ -40,6 +40,7 @@ def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepa
                 print(e)
 
 
+
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
         description='Recalculates scores')

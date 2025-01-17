@@ -72,8 +72,7 @@ def get_seq_from_uniprot(uniprot_id):
 
 
 def get_info_from_uniprot(uniprot_id):
-    # url = 'https://rest.uniprot.org/uniprotkb/accessions?accessions={}'.format(uniprot_id)
-    url = 'https://rest.uniprot.org/uniprotkb/{}'.format(uniprot_id)
+    url = 'https://rest.uniprot.org/uniprotkb/accessions?accessions={}'.format(uniprot_id)
     response = get_url(url)
     result = response.json()
     return result

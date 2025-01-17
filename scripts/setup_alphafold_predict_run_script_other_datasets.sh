@@ -125,7 +125,8 @@ while [[ $# -gt 0 ]]; do
           shift;
           ;;
 	--reduced_dbs)
-	  # Use small BFD
+	  # Amber minimization is done per default
+	  # For large proteins with more than 3000 amino acids minimzation is time consuming
           REDUCED_DBS=True
 	  shift;
 	  ;;
@@ -198,7 +199,7 @@ else
 fi
 
 if [ -z "$SEED" ]; then
-  echo "Not setting user-defined random_seed"
+  echo "Not setting random_seed"
 else
   OPTIONS+="--random_seed=$SEED \\"$'\n'
 fi
@@ -233,7 +234,7 @@ if (( "$sum_aa" < 200 )); then
 elif (( "$sum_aa" >= 200 )) && (( "$sum_aa" < 1500 )); then
     RUNTIME="24:00"
     GPU_MEM_MB=20240
-    TOTAL_CPU_MEM_MB=51200 #240000 # 51200 doesn't seem like enough. I get OOM errors
+    TOTAL_CPU_MEM_MB=51200 #240000
     TOTAL_SCRATCH_MB=120000
     ENABLE_UNIFIED_MEMORY=1
     MEM_FRACTION=2
@@ -364,7 +365,7 @@ python /cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/src/scor
 -o $RESULTSFILE --interface-cutoff $CUTOFF \$OUTPUT_DIR/$PROTEIN
 
 # Reduce the size of the results pickle files
-python /cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/src/reduce_disk_usage.py --reduce-results \$OUTPUT_DIR/$PROTEIN
+python /cluster/project/beltrao/dbaptista/af_multimer_workflow/src/reduce_disk_usage.py --reduce-results \$OUTPUT_DIR/$PROTEIN
 
 
 rsync -av $RSYNC_OPTIONS \$TMPDIR/output/$PROTEIN $WORKDIR
