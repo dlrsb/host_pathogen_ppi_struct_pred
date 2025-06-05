@@ -249,83 +249,6 @@ def create_graphql_query_assemblies(assembly_ids):
     return graphql_query
 
 
-def create_graphql_query_assemblies(assembly_ids):
-    format_ids = '[' + ', '.join(['"' + i + '"' for i in assembly_ids]) + ']'
-    graphql_query = """{
-    assemblies(assembly_ids:""" + format_ids + """){
-    rcsb_id
-    entry{
-      struct {
-        title
-      }
-      rcsb_accession_info{
-        initial_release_date
-      }
-      rcsb_entry_info {
-        resolution_combined
-        experimental_method
-      }
-    }
-    rcsb_struct_symmetry{
-    oligomeric_state
-    }
-    pdbx_struct_assembly
-    {
-    oligomeric_details
-    rcsb_details
-    }
-    rcsb_assembly_info{
-    polymer_entity_count_protein
-    polymer_entity_instance_count_protein
-    total_number_interface_residues
-    num_protein_interface_entities
-    num_heteromeric_interface_entities
-    modeled_polymer_monomer_count
-    }
-    polymer_entity_instances{
-      polymer_entity{
-        rcsb_polymer_entity{
-          pdbx_description
-          pdbx_mutation
-          rcsb_polymer_name_combined{
-            names
-          }
-        }
-        uniprots{
-          rcsb_uniprot_container_identifiers{
-            uniprot_id
-          }
-          rcsb_uniprot_protein{
-            source_organism{
-              taxonomy_id
-              scientific_name
-            }
-          }
-        }
-        rcsb_entity_source_organism{
-          ncbi_taxonomy_id
-          ncbi_scientific_name
-        }
-        entity_poly{
-          rcsb_mutation_count
-          rcsb_insertion_count
-          rcsb_deletion_count
-          rcsb_conflict_count
-          rcsb_artifact_monomer_count
-          rcsb_sample_sequence_length
-        }
-        rcsb_cluster_membership{
-          cluster_id
-          identity
-        }
-      }
-    }
-    }
-    }"""
-
-    return graphql_query
-
-
 def create_graphql_query_entries(pdb_ids):
     format_pdb_ids = '[' + ', '.join(['"' + i + '"' for i in pdb_ids]) + ']'
     graphql_query = """{
@@ -480,58 +403,11 @@ def reduce_redundancy_uniprot(ids_df):
                 assembly_ids_to_keep.append(best_resolution['assembly_id'])
 
     nonredundant_df = ids_df[ids_df['assembly_id'].isin(assembly_ids_to_keep)]
-    # print(len(assembly_ids_to_keep))
-    # print(nonredundant_df.shape)
-    # print(len(nonredundant_df['complex_id'].to_list()))
-    # print(len(nonredundant_df['group'].to_list()))
 
     return nonredundant_df
 
 
 def reduce_redundancy_pdbclusters(ids_df, identity_threshold):
-    cluster_id_cols = [col for col in sorted(ids_df.columns) if
-                       'cluster_id_{}identity'.format(str(identity_threshold)) in col]
-    for cluster_id_col in cluster_id_cols:
-        uniprot_col = 'polymer_entity_instances.{}.polymer_entity.uniprots.uniprot_id'.format(
-            cluster_id_col.split('.')[1])
-        polymer_name_col = 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.rcsb_polymer_name_combined'.format(
-            cluster_id_col.split('.')[1])
-        description_col = 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.pdbx_description'.format(
-            uniprot_col.split('.')[1])
-        ids_df[cluster_id_col] = ids_df[cluster_id_col].fillna(value=ids_df[uniprot_col]).fillna(
-            value=ids_df[polymer_name_col]).fillna(value=ids_df[description_col])
-        # small peptides (less than 10 aa) aren't clustered by PDB, so they won't have a cluster_id attributed to them.
-        # using uniprot_id instead for these cases, or rcsb_polymer_name_combined for proteins without a Uniprot ID
-
-    ids_df['complex_cluster_ids'] = ids_df[cluster_id_cols].apply(lambda row: '_'.join(row.values), axis=1)
-    ids_df['group'] = ids_df[cluster_id_cols].apply(lambda row: '_'.join(sorted(row.values.tolist())), axis=1)
-    # ids_df.to_csv('search_results_redundant_with_clusters.csv', index=False)
-
-    assembly_ids_to_keep = []
-
-    for group in ids_df['group'].unique().tolist():
-        ids_df_subset = ids_df[ids_df['group'] == group]
-        if ids_df_subset.shape[0] == 1:
-            assembly_ids_to_keep.append(ids_df_subset['assembly_id'].to_list()[0])
-        else:
-            # ids_df_subset.to_csv(group + '.csv', index=False)
-            # choose the largest complex using 'rcsb_assembly_info.modeled_polymer_monomer_count'
-            largest_structure_df = ids_df_subset[
-                ids_df_subset['rcsb_assembly_info.modeled_polymer_monomer_count'] == ids_df_subset[
-                    'rcsb_assembly_info.modeled_polymer_monomer_count'].max()]
-            if largest_structure_df.shape[0] == 1:
-                assembly_ids_to_keep.append(largest_structure_df['assembly_id'].to_list()[0])
-            else:  # if more than one entry has the same size, choose the one with the lowest resolution:
-                best_resolution = largest_structure_df.loc[
-                                  largest_structure_df['entry.rcsb_entry_info.resolution_combined.1'].idxmin(), :]
-                assembly_ids_to_keep.append(best_resolution['assembly_id'])
-
-    nonredundant_df = ids_df[ids_df['assembly_id'].isin(assembly_ids_to_keep)]
-
-    return nonredundant_df
-
-
-def reduce_redundancy_pdbclusters2(ids_df, identity_threshold):
     cluster_id_cols = [col for col in sorted(ids_df.columns) if
                        'cluster_id_{}identity'.format(str(identity_threshold)) in col]
     for cluster_id_col in cluster_id_cols:
@@ -610,7 +486,6 @@ def remove_chimeras_and_tags(ids_df):
 
 def remove_missing_organisms(ids_df):
     cols = [col for col in ids_df.columns.to_list() if 'ncbi_taxonomy_id' in col]
-    # ids_df[cols] = ids_df[cols].replace(r'^\s*$', np.nan, regex=True)
     filtered_df = ids_df.dropna(axis=0, how='any', subset=cols)
     return filtered_df
 
@@ -619,9 +494,6 @@ def split_data_by_chain_size(ids_df, threshold=30):
     cols = [col for col in ids_df.columns if 'rcsb_sample_sequence_length' in col]
     peptide_protein_df = ids_df[(ids_df[cols] < threshold).any(axis=1)]
     protein_protein_df = ids_df[~(ids_df[cols] < threshold).any(axis=1)]
-    # print(peptide_protein_df.shape)
-    # print(protein_protein_df.shape)
-    # print(set(peptide_protein_df['assembly_id'].to_list()).intersection(set(protein_protein_df['assembly_id'].to_list())))
     return peptide_protein_df, protein_protein_df
 
 
@@ -754,8 +626,8 @@ def get_pdb_ids(host, pathogen, multimer_type='dimer', resolution_upper_limit=3.
         results_df = results_df[
             results_df['entry.rcsb_accession_info.initial_release_date'] >= '{}T:00:00:00Z'.format(min_date)]
 
-    results_df_90identity = reduce_redundancy_pdbclusters2(results_df, identity_threshold=90)
-    results_df_70identity = reduce_redundancy_pdbclusters2(results_df, identity_threshold=70)
+    results_df_90identity = reduce_redundancy_pdbclusters(results_df, identity_threshold=90)
+    results_df_70identity = reduce_redundancy_pdbclusters(results_df, identity_threshold=70)
     assert len(set(results_df_70identity['assembly_id'].to_list()).difference(
         set(results_df_90identity['assembly_id'].tolist()))) == 0
 
@@ -781,10 +653,11 @@ def save_results(df, output_dir, prefix=''):
     with open(os.path.join(output_dir, '{}selected_assembly_ids.txt'.format(prefix)), 'w') as f:
         f.write(','.join(df['assembly_id'].unique().tolist()))
 
-# if __name__ == '__main__':
-#     get_pdb_ids(host='Mammalia', pathogen='Viruses', multimer_type='dimer',
-#                 resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
-#                 output_dir='../data/virus_mammalia_dimers')
-#     # get_pdb_ids(host='Mammalia', pathogen='Bacteria', multimer_type='dimer',
-#     #                                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
-#     #                                output_dir='../data/bacteria_mammalia_dimers')
+
+if __name__ == '__main__':
+    get_pdb_ids(host='Mammalia', pathogen='Viruses', multimer_type='dimer',
+                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
+                output_dir='../data/virus_mammalia_dimers')
+    get_pdb_ids(host='Mammalia', pathogen='Bacteria', multimer_type='dimer',
+                resolution_upper_limit=3.0, only_keep_first_bioassembly=True,
+                output_dir='../data/bacteria_mammalia_dimers')

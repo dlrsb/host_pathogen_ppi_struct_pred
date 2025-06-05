@@ -9,19 +9,19 @@ def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepa
     prediction_dirs = [pred_dir for pred_dir in os.listdir(results_dir) if os.path.isdir(os.path.join(results_dir, pred_dir))]
     for pred_dir in prediction_dirs:
         if fasta_files_dir is not None:
-            fasta_path = os.path.join(fasta_files_dir, '{}.fasta'.format(pred_dir))
+            fasta_path = os.path.join(fasta_files_dir, f'{pred_dir}.fasta')
         else:
             fasta_path = None
-        if os.path.exists(os.path.join(results_dir, pred_dir, '{}.done'.format(pred_dir))):
+        if os.path.exists(os.path.join(results_dir, pred_dir, f'{pred_dir}.done')):
             pred_dir_path = os.path.join(results_dir, pred_dir, pred_dir)
 
             if native_structures_dir is not None:
-                if os.path.exists(os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))):
-                    native_path = os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pred_dir))
-                    if os.path.exists(os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))):
-                        pred_dir_path = os.path.join(results_dir, pred_dir, '{}_fixedmodel'.format(pred_dir))
+                if os.path.exists(os.path.join(native_structures_dir, f'{pred_dir}_fixedmodel.pdb')):
+                    native_path = os.path.join(native_structures_dir, f'{pred_dir}_fixedmodel.pdb')
+                    if os.path.exists(os.path.join(results_dir, pred_dir, f'{pred_dir}_fixedmodel')):
+                        pred_dir_path = os.path.join(results_dir, pred_dir, f'{pred_dir}_fixedmodel')
                 else:
-                    native_path = os.path.join(native_structures_dir, '{}.pdb'.format(pred_dir))
+                    native_path = os.path.join(native_structures_dir, f'{pred_dir}.pdb')
             else:
                 native_path = None
 
@@ -40,10 +40,9 @@ def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepa
                 print(e)
 
 
-
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
-        description='Recalculates scores')
+        description='Scores multimer AlphaFold-multimer structures')
     arg_parser.add_argument('results_dir', help='Folder containing Alphafold-multimer output folders for a given dataset')
     arg_parser.add_argument(
         '-n',

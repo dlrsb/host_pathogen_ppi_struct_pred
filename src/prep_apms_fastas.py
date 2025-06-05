@@ -54,8 +54,7 @@ def remove_mg132_ev71():
 def get_prey_fasta_file(prey_id, fasta_output_dir):
     prey_output_fasta_path = os.path.join(fasta_output_dir, '{}.fasta'.format(prey_id))
     if not os.path.exists(prey_output_fasta_path):
-        prey_record = get_seq_from_uniprot(
-            prey_id)  # getting from Uniprot as the file in the OneDrive folder says it's from 2016
+        prey_record = get_seq_from_uniprot(prey_id)
         prey_record.id = prey_id
         prey_record.name = ''
         prey_record.description = ''

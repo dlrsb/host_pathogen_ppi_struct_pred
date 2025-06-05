@@ -9,7 +9,6 @@ from Bio.Align import PairwiseAligner, substitution_matrices
 
 
 def get_residues_from_sifts(model_pdb_id, chain_id, uniprot_id):
-    #sifts_df = pd.read_csv('/cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/data/sifts_pdb_chain_uniprot.csv', header=1)
     sifts_df = pd.read_csv('../data/sifts_pdb_chain_uniprot.csv', header=1)
     model_sifts_data = sifts_df[sifts_df['PDB'] == model_pdb_id]
     print(chain_id)

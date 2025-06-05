@@ -4,7 +4,7 @@ import pandas as pd
 from Bio import SeqIO
 
 
-def create_json(protein_pairs_dir, output_dir, seed, use_templates=True):
+def create_json(protein_pairs_dir, output_dir, seed, use_templates=False):
     protein_pairs_filepaths = [os.path.join(protein_pairs_dir, x) for x in os.listdir(protein_pairs_dir)]
     for pair_fasta in protein_pairs_filepaths:
         pair_name = os.path.splitext(os.path.split(pair_fasta)[-1])[0].lower()
@@ -30,7 +30,7 @@ def create_json(protein_pairs_dir, output_dir, seed, use_templates=True):
             json.dump(json_object, f, indent=4)
 
 
-def create_json_hpidb(protein_pairs_filepath, output_dir, seed, use_templates=True):
+def create_json_hpidb(protein_pairs_filepath, output_dir, seed, use_templates=False):
     df = pd.read_csv(protein_pairs_filepath)
     df['id'] = df['id'].str.replace('INTACT:', 'INTACT-').str.replace('PRO_', 'PRO-').str.replace('NP_', 'NP-')
 

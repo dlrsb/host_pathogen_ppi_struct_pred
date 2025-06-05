@@ -1,7 +1,8 @@
-import ast
+import sys
 import os
 import subprocess
 import copy
+import requests
 import numpy as np
 from Bio import SeqIO, pairwise2
 from Bio.Align import substitution_matrices
@@ -9,11 +10,29 @@ from Bio.PDB import PDBParser, Select, PDBIO, Selection, NeighborSearch
 from Bio.PDB.DSSP import dssp_dict_from_pdb_file
 
 
+def get_url(url, **kwargs):
+    response = requests.get(url, **kwargs)
+
+    if not response.ok:
+        print(response.text)
+        response.raise_for_status()
+        sys.exit()
+
+    return response
+
+
 def load_structure(pdb_filepath):
     parser = PDBParser(QUIET=True)
     name = os.path.split(pdb_filepath)[-1].split('.')[0]
     structure = parser.get_structure(name, pdb_filepath)[0] # gets first model
     return structure
+
+
+def run_pymol(cmds):
+    #s_ = subprocess.run('module load gcc/6.3.0 pymol; pymol -cpQ', input='\n'.join(cmds), text=True, shell=True, capture_output=True)
+    s_ = subprocess.run('pymol -cpQ', input='\n'.join(cmds), text=True, shell=True, capture_output=True)
+    print(s_)
+    return s_
 
 
 def align_seqs(structure1_filepath, structure2_filepath):
@@ -28,8 +47,6 @@ def align_seqs(structure1_filepath, structure2_filepath):
     for chain in chains:
         seq1 = struct1_seqs[chain].seq.replace('X', '')
         seq2 = struct2_seqs[chain].seq.replace('X', '')
-        # TODO: Switch to Bio.Align.PairwiseAligner as pairwise2 is deprecated.
-        #  https://biopython.org/docs/1.76/api/Bio.Align.html
         alignment = pairwise2.align.globalds(
             seq1,
             seq2,
@@ -124,11 +141,6 @@ def select_residues_within_radius(pdb_filepath, chain_id, residue_list, radius):
     return selected_residues_final
 
 
-def run_pymol(cmds):
-    s_ = subprocess.run('module load gcc/6.3.0 pymol; pymol -cpQ', input='\n'.join(cmds), text=True, shell=True, capture_output=True)
-    return s_
-
-
 def calc_avg_plddt(pdb_filepath, interactor_chain, selected_residues):
     print(pdb_filepath)
     print(selected_residues)
@@ -153,20 +165,6 @@ def calc_avg_plddt(pdb_filepath, interactor_chain, selected_residues):
     return avg_plddt
 
 
-def get_ialign_interface(structure1_filepath, structure2_filepath, scoring_metric, normalization_method, if_outputdir,
-                         distance_cutoff=4.5):
-    try:
-        called_process = subprocess.run(
-                ['/cluster/project/beltrao/dbaptista/host_pathogen_ppi_struct_pred/scripts/run_ialign2.sh', '-s1',
-                 structure1_filepath, '-s2', structure2_filepath, '-n', normalization_method, '-m', scoring_metric,
-                 '--dc', str(distance_cutoff), '--minp', '10', '--mini', '8', '--if_outputdir',
-                 if_outputdir],
-                check=True)
-        return called_process
-    except subprocess.CalledProcessError as err:
-        print(err)
-
-
 def get_interface_secondary_struct(pdb_filepath, chain, interface_residues):
     dssp_tuple = dssp_dict_from_pdb_file(pdb_filepath, DSSP='mkdssp', dssp_version='3.0.0')
     dssp_dict = dssp_tuple[0]
@@ -177,6 +175,12 @@ def get_interface_secondary_struct(pdb_filepath, chain, interface_residues):
     return counts
 
 
+def sort_id(x):
+    split_id = x.split('_')
+    sorted_id = '_'.join(sorted(split_id))
+    return sorted_id
+
+
 def create_pymol_session(pdb_filepath1, shared_prot_chain1, interaction_id1, pdb_filepath2, shared_prot_chain2,
                          interaction_id2, output_filepath):
     cmd_ = ['delete all',
@@ -184,8 +188,11 @@ def create_pymol_session(pdb_filepath1, shared_prot_chain1, interaction_id1, pdb
             'space cmyk',
             f'load {pdb_filepath1}, {interaction_id1}',
             f'load {pdb_filepath2}, {interaction_id2}',
-            f'color gray70, {interaction_id1} & chain {shared_prot_chain1}',
-            f'color gray70, {interaction_id2} & chain {shared_prot_chain2}',
-            f'align {interaction_id1} & chain {shared_prot_chain1}, {interaction_id2} & chain {shared_prot_chain2}',
+            f'color tv_orange, {interaction_id1}',
+            f'color skyblue, {interaction_id2}',
+            f'color gray50, {interaction_id1} & chain {shared_prot_chain1}',
+            f'color gray50, {interaction_id2} & chain {shared_prot_chain2}',
+            f'super {interaction_id1} & chain {shared_prot_chain1}, {interaction_id2} & chain {shared_prot_chain2}',
             f'save {output_filepath}']
+    print(cmd_)
     run_pymol(cmd_)

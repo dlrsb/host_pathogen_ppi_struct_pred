@@ -69,15 +69,15 @@ def score_all(results_dir, native_structures_dir, fasta_files_dir, output_filepa
     for pred_dir in prediction_dirs:
         pair_name = pred_dir.upper()
         if fasta_files_dir is not None:
-            fasta_filepath = os.path.join(fasta_files_dir, '{}.fasta'.format(pair_name))
+            fasta_filepath = os.path.join(fasta_files_dir, f'{pair_name}.fasta')
         else:
             fasta_filepath = None
 
         if native_structures_dir is not None:
-            if os.path.exists(os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pair_name))):
-                native_filepath = os.path.join(native_structures_dir, '{}_fixedmodel.pdb'.format(pair_name))
+            if os.path.exists(os.path.join(native_structures_dir, f'{pair_name}_fixedmodel.pdb')):
+                native_filepath = os.path.join(native_structures_dir, f'{pair_name}_fixedmodel.pdb')
             else:
-                native_filepath = os.path.join(native_structures_dir, '{}.pdb'.format(pair_name))
+                native_filepath = os.path.join(native_structures_dir, f'{pair_name}.pdb')
         else:
             native_filepath = None
 

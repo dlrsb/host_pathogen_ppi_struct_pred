@@ -3,7 +3,7 @@ import glob
 import json
 import argparse
 import pandas as pd
-from rename_protein_chains import rename_protein_chains2
+from rename_protein_chains import rename_protein_chains
 from msa_seqs import get_num_msa_hits
 from scoring_metrics import *
 
@@ -57,7 +57,7 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
 
         # rename_chains
         if rename_chains:
-            rename_protein_chains2(os.path.join(predictions_dir, model), input_fasta_filepath)
+            rename_protein_chains(os.path.join(predictions_dir, model), input_fasta_filepath)
             model_filepath = os.path.join(predictions_dir, '{}_chains_renamed.pdb'.format(model.split('.')[0]))
         else:
             model_filepath = os.path.join(predictions_dir, model)
@@ -75,6 +75,7 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
         # calculate pDockQ as defined in the Folddock paper, with the original 8A cutoff value:
         pdockq_folddock_results_8A = pdockq_folddock_score(model_filepath, cutoff=8)
         results.update(add_prefix(pdockq_folddock_results_8A, prefix))
+
         # # calculate pDockQ as defined in the Folddock paper, with the user-defined cutoff value:
         # pdockq_folddock_results = pdockq_folddock_score(model_filepath, cutoff=interface_cutoff)
         # results.update(add_prefix(pdockq_folddock_results, prefix))
@@ -89,18 +90,6 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
         pdockq_huintaf2_results = pdockq_huintaf2_score(model_filepath, cutoff=interface_cutoff)
         results.update(add_prefix(pdockq_huintaf2_results, prefix))
 
-        # calculate pDockQ2 as defined in "Evaluation of AlphaFold-Multimer prediction on multi-chain protein complexes"
-        pdockq2_results_8 = pdockq2_score(predicted_structure_filepath=model_filepath,
-                                          results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
-                                          cutoff=8)
-        results.update(add_prefix(pdockq2_results_8, prefix))
-
-        # # calculate pDockQ2 using a user-defined cutoff value
-        # pdockq2_results = pdockq2_score(predicted_structure_filepath=model_filepath,
-        #                                 results_pickle_filepath=os.path.join(predictions_dir, af_scores_file),
-        #                                 cutoff=interface_cutoff)
-        # results.update(add_prefix(pdockq2_results, prefix))
-
         if native_structure_filepath is not None:
             # MM-align TM-score
             tmscore_results = tm_score(native_structure_filepath=native_structure_filepath,
@@ -112,10 +101,6 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
                                         fasta_filepath=input_fasta_filepath,
                                         select_residues=select_residues_before_dockq)
             results.update(add_prefix(dockq_results, prefix))
-
-        # calculate interface size for each structure
-        # interface_results = get_interface_size(model_filepath, contacts_threshold=interface_cutoff)
-        # results.update(add_prefix(interface_results, prefix))
 
     # get # of seqs in MSAs for each structure
     num_msas = get_num_msa_hits(predictions_dir)
@@ -129,8 +114,8 @@ def score_structure(predictions_dir, native_structure_filepath=None, input_fasta
 
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(
-        description='Calculate scores, interface statistics and number of seqs in MSAs for AlphaFold2 predicted structures')
-    arg_parser.add_argument('predictions_dir', help='Folder containing Alphafold-multimer outputs')
+        description='Calculate scores for AlphaFold-multimer predicted structures')
+    arg_parser.add_argument('predictions_dir', help='Folder containing AlphaFold-multimer outputs')
     arg_parser.add_argument(
         '-n',
         dest='native_structure_filepath',

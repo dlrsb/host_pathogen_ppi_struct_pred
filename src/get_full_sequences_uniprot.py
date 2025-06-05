@@ -1,27 +1,15 @@
 import os
-import sys
 import copy
 import time
 import argparse
 import pickle
 from io import StringIO
-import requests
 import pandas as pd
 from Bio import SeqIO
 from fuzzywuzzy import fuzz
 from search_pdb_complexes import make_request_graphql_api, flatten_json
-from utils import load_structure
-
-
-def get_url(url, **kwargs):
-    response = requests.get(url, **kwargs)
-
-    if not response.ok:
-        print(response.text)
-        response.raise_for_status()
-        sys.exit()
-
-    return response
+from utils import load_structure, get_url
+from get_uniprot_info import get_info_from_uniprot
 
 
 def create_graphql_query_chainids(assembly_ids):
@@ -71,13 +59,6 @@ def get_seq_from_uniprot(uniprot_id):
     return seq_record
 
 
-def get_info_from_uniprot(uniprot_id):
-    url = 'https://rest.uniprot.org/uniprotkb/accessions?accessions={}'.format(uniprot_id)
-    response = get_url(url)
-    result = response.json()
-    return result
-
-
 def check_if_is_polyprotein(uniprot_info):
     names = []
     if 'recommendedName' in uniprot_info['proteinDescription']:
@@ -98,77 +79,16 @@ def check_if_is_polyprotein(uniprot_info):
         return False
 
 
-def get_prot_from_polyprotein(seq_record, uniprot_info, all_ids):
-    df = pd.json_normalize(uniprot_info['features'])
-    proteins_df = copy.deepcopy(df[df['type'] == 'Chain'])
-
-    def _find(x, prot_id_list):
-        ratios = []
-        for prot_id in prot_id_list:
-            if 'polyprotein' not in prot_id.lower():
-                #ratios.append(fuzz.token_sort_ratio(prot_id, x))
-                ratios.append(fuzz.WRatio(prot_id, x))
-        return max(ratios)
-
-    #prot = proteins_df[proteins_df['description'].str.lower().isin([x.lower() for x in all_ids])]
-    #prot = proteins_df[proteins_df['description'].apply(_find, prot_id_list=all_ids)]
-    proteins_df['max_token_sort_ratio'] = proteins_df['description'].apply(_find, prot_id_list=all_ids)
-    if proteins_df.empty:
-        return seq_record
-    else:
-        prot = proteins_df.loc[proteins_df['max_token_sort_ratio'].idxmax()]
-        if prot['max_token_sort_ratio'] < 90:
-            return seq_record
-        else:
-            seq_record_new = copy.deepcopy(seq_record)
-            seq_record_new.seq = seq_record.seq[prot['location.start.value'].item()-1:prot['location.end.value'].item()]
-            protein_id = prot['description']
-            protein_id = protein_id.replace("'", "").replace("/", " ").replace("(", " ").replace(")", " ").replace(",", " ")
-            protein_id = ''.join(protein_id.split(' '))
-            seq_record_new.id = '{}_{}'.format(seq_record.id, protein_id)
-            return seq_record_new
-
-
-def get_chain_info(data_df, output_dir=None):
+def get_chain_info(data_df):
     query = create_graphql_query_chainids(data_df['assembly_id'].to_list())
     graphql_results = make_request_graphql_api(query)
     chain_info_df = pd.DataFrame([flatten_json(x, exclude=['uniprots', 'rcsb_polymer_name_combined']) for x in
                                   graphql_results['data']['assemblies']])
     chain_info_df.rename(mapper={'rcsb_id': 'assembly_id'}, axis=1, inplace=True)
-    chain_info_df.to_csv()
     return chain_info_df
 
 
-def get_chain_id(prot_id, chain_id_pdb_info, uniprot_cols, native_chains):
-    for uniprot_col in uniprot_cols:
-        entity_id = uniprot_col.split('.')[1]
-        name_col = 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.rcsb_polymer_name_combined'.format(
-            entity_id)
-        description_col = 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.pdbx_description'.format(
-            entity_id)
-        # chain_id_pdb_info[names_col] = chain_id_pdb_info[names_col].replace(r'^\s*$', np.nan, regex=True).fillna(value=chain_id_pdb_info[
-        #     description_col])  # because some chains don't have an associated rcsb_polymer_name_combined value
-        # chain_id_pdb_info[uniprot_col] = chain_id_pdb_info[uniprot_col].replace(r'^\s*$', np.nan, regex=True).fillna(
-        #     value=chain_id_pdb_info[names_col])  # because some chains don't have an associated uniprot_id.
-        if chain_id_pdb_info[uniprot_col].values == prot_id or chain_id_pdb_info[name_col].values == prot_id or \
-                chain_id_pdb_info[description_col].values == prot_id:
-            chain_ids_pdb = chain_id_pdb_info[
-                'polymer_entity_instances.{}.polymer_entity.entity_poly.pdbx_strand_id'.format(entity_id)]
-            # print(chain_ids_pdb)
-            # print(chain_ids_pdb.to_list()[0].split(','))
-            # print(native_chains)
-            chain_id = set(chain_ids_pdb.to_list()[0].split(',')).intersection(set(native_chains)).pop()
-            break
-        # else:
-        #     print(prot_id)
-        #     print(chain_id_pdb_info[uniprot_col].values)
-        #     print(chain_id_pdb_info[name_col].values)
-        #     print(chain_id_pdb_info[description_col].values)
-
-    return chain_id
-
-
-def get_chain_id_2(prot_ids, chain_id_pdb_info, uniprot_cols, native_chains):
+def get_chain_id(prot_ids, chain_id_pdb_info, uniprot_cols, native_chains):
     for uniprot_col in uniprot_cols:
         entity_id = uniprot_col.split('.')[1]
         name_col = 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.rcsb_polymer_name_combined'.format(
@@ -223,8 +143,8 @@ def get_full_sequences_from_uniprot(dataset_filepath, native_pdb_dir, fasta_outp
                                                     entity_id),
                                                 'polymer_entity_instances.{}.polymer_entity.rcsb_polymer_entity.pdbx_description'.format(
                                                     entity_id)] if not pd.isnull(row[x])]
-            chain_id = get_chain_id_2(prot_ids=all_protein_ids, chain_id_pdb_info=chain_id_pdb_info,
-                                      uniprot_cols=uniprot_cols, native_chains=native_chains)
+            chain_id = get_chain_id(prot_ids=all_protein_ids, chain_id_pdb_info=chain_id_pdb_info,
+                                    uniprot_cols=uniprot_cols, native_chains=native_chains)
             # chain_id_pdb = row['polymer_entity_instances.{}.polymer_entity.entity_poly.pdbx_strand_id'.format(entity_id)]
             # chain_id = set(chain_id_pdb.split(',')).intersection(set(native_chains)).pop()
 
@@ -255,8 +175,8 @@ def get_full_sequences_from_uniprot(dataset_filepath, native_pdb_dir, fasta_outp
                                                                   '{}_{}.fasta'.format(protein_id, id))
             else:
                 protein_id = row[col]
-                chain_seq_record = get_seq_from_uniprot(protein_id) # get seq from Uniprot
-                chain_seq_record.id = protein_id # get info from Uniprot
+                chain_seq_record = get_seq_from_uniprot(protein_id)
+                chain_seq_record.id = protein_id
                 uniprot_info = get_info_from_uniprot(protein_id)
                 is_polyprotein = check_if_is_polyprotein(uniprot_info)
                 if is_polyprotein:
@@ -276,6 +196,7 @@ def get_full_sequences_from_uniprot(dataset_filepath, native_pdb_dir, fasta_outp
                 seq_records.append(chain_seq_record_native_chain_id)
 
                 time.sleep(1)
+
         if not entry_has_polyprotein:
             multimer_fasta_path = os.path.join(fasta_output_dir, 'protein_pairs', '{}.fasta'.format(id))
             # sort chains according to order in native file:
